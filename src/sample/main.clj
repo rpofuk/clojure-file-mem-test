@@ -24,8 +24,6 @@
      (System/gc))
     file))
 
-
-
 (defn gzip
   [input output & opts]
   (with-open [output (-> output io/output-stream GZIPOutputStream.)]
@@ -46,15 +44,14 @@
     gz-file))
 
 (defn in-function
-  [ro]
+  [ro parse]
   (let [entities
         (util/d-time
          "Loading data"
          (let [tmp (mapv
                     #(select-keys
                       %
-                      [:param1
-                       :param2])
+                      parse)
                     ro)]
            (System/gc)
            (System/gc)
@@ -73,21 +70,27 @@
         line-seq)))
 
 (defn generate
-  [& args]
+  [& [{:keys [num gen parse]}]]
   (util/d-time
    "Prparing"
-   (println "Preparing"))
+   (println "Preparing" num gen parse))
   (let [data-file
         (util/d-time
          "Creating data"
          (let [tmp (.getAbsolutePath
                     (gzip-commands
-                     (map (fn [x] {:param1 (uuid/gen)
-                                   :param2 (uuid/gen)})
-                          (range 10000000))))]
+                     (map (fn [_x] (reduce
+                                   (fn [acc v]
+                                     (assoc acc
+                                            v
+                                            (str (uuid/gen))))
+                                   {}
+                                   gen))
+                          (range num))))]
            (System/gc)
            tmp))
         entities (in-function
-                  (stream data-file))]
+                  (stream data-file)
+                  parse)]
 
     (println "DONEE" (count entities))))
